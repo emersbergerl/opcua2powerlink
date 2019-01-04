@@ -1,0 +1,171 @@
+################################################################################
+#
+# CMake file of opcua2powerlink gateway
+#
+# Copyright (c) 2017, B&R Industrial Automation GmbH
+# Copyright (c) 2018, Kalycito Infotech Private Limited
+# Copyright (c) 2019, B&R Industrial Automation GmbH
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#     * Redistributions of source code must retain the above copyright
+#       notice, this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#     * Neither the name of the copyright holders nor the
+#       names of its contributors may be used to endorse or promote products
+#       derived from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL COPYRIGHT HOLDERS BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+# ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+################################################################################
+
+################################################################################
+# Setup project and generic options
+
+PROJECT(opcua2powerlink C)
+MESSAGE(STATUS "Configuring opcua2powerlink")
+
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8.12)
+CMAKE_POLICY(SET CMP0043 NEW)
+
+INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/common/cmake/options.cmake)
+
+################################################################################
+# Call python script for creating objdict.h, app.c and nodeset.xml files
+
+find_package( PythonInterp 2.7 REQUIRED)
+execute_process(
+					COMMAND 
+						"${PYTHON_EXECUTABLE}"
+						"${CMAKE_CURRENT_SOURCE_DIR}/tools/xdd_compiler/ConvertXDD.py"
+						"${XDD}"
+						"${CMAKE_CURRENT_SOURCE_DIR}"
+						"${OPCUA_NAMESPACE}"
+					DEPENDS
+						"${CMAKE_CURRENT_SOURCE_DIR}/tools/xdd_compiler/ConvertXDD.py"
+					COMMENT "Execute python script"
+					RESULT_VARIABLE PY_OUT
+				)
+
+IF(PY_OUT)
+	MESSAGE( FATAL_ERROR "The python script finished with errors!")
+ENDIF()
+
+################################################################################
+# Setup project files and definitions
+
+SET(OBJDICT CiA401_CN)              # Set object dictionary to use
+FIND_OPLK_LIBRARY("cn")             # Find suitable openPOWERLINK library
+
+FILE(GLOB_RECURSE DEMO_SOURCE_FILES "${DEMO_SOURCE_DIR}/*.c")
+
+IF(EXISTS ${OPLK_INCLUDE_DIR}/opcua/nodeset.c)
+	MESSAGE( STATUS "Found Nodeset file in include/opcua/ directory")
+ELSE()
+	MESSAGE( FATAL_ERROR "The Nodeset files are missing, execute the CompileNodeset script inside the nodeset folder and then try again!")
+ENDIF()
+
+# Set generic sources and include directories for this demo
+SET(DEMO_SOURCES
+    ${DEMO_SOURCE_FILES}
+	${OPLK_INCLUDE_DIR}/opcua/nodeset.c
+	${OPLK_INCLUDE_DIR}/opcua/open62541.c
+    ${COMMON_SOURCE_DIR}/obdcreate/obdcreate.c
+    ${COMMON_SOURCE_DIR}/eventlog/eventlog.c
+    ${COMMON_SOURCE_DIR}/eventlog/eventlogstring.c
+    ${COMMON_SOURCE_DIR}/netselect/netselect.c
+    ${CONTRIB_SOURCE_DIR}/console/printlog.c
+    )
+
+INCLUDE_DIRECTORIES(
+    ${DEMO_SOURCE_DIR}
+    ${OBJDICT_DIR}/${OBJDICT}
+    ${CONTRIB_SOURCE_DIR}
+	${OPLK_INCLUDE_DIR}/opcua/
+    )
+
+# PResChaining is not supported by non-openMAC targets
+#ADD_DEFINITIONS(-DCONFIG_DLL_PRES_CHAINING_CN)
+ADD_DEFINITIONS(-DNMT_MAX_NODE_ID=0)
+ADD_DEFINITIONS(-DCONFIG_INCLUDE_PDO)
+ADD_DEFINITIONS(-DCONFIG_INCLUDE_SDO_ASND)
+ADD_DEFINITIONS(-DCONFIG_INCLUDE_MASND)
+
+################################################################################
+# Setup compile definitions depending on configuration
+IF (CFG_KERNEL_STACK_DIRECTLINK)
+    UNSET (CFG_DEMO_CN_CONSOLE_USE_SYNCTHREAD CACHE)
+    ADD_DEFINITIONS(-DCONFIG_KERNELSTACK_DIRECTLINK)
+ELSE (CFG_KERNEL_STACK_DIRECTLINK)
+    OPTION (CFG_DEMO_CN_CONSOLE_USE_SYNCTHREAD "Create separate thread for syncronous data exchange" ON)
+    IF (CFG_DEMO_CN_CONSOLE_USE_SYNCTHREAD)
+        ADD_DEFINITIONS(-DCONFIG_USE_SYNCTHREAD)
+    ENDIF (CFG_DEMO_CN_CONSOLE_USE_SYNCTHREAD)
+ENDIF (CFG_KERNEL_STACK_DIRECTLINK)
+
+IF (CFG_KERNEL_STACK_ZYNQ_INTF)
+    ADD_DEFINITIONS(-D__LINUX_ZYNQ__)
+ENDIF ()
+
+
+################################################################################
+# Setup the architecture specific definitions
+
+IF(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    include(linux.cmake)
+ELSEIF(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    include (windows.cmake)
+ELSE()
+    MESSAGE(FATAL_ERROR "System ${CMAKE_SYSTEM_NAME} is not supported!")
+ENDIF()
+
+################################################################################
+# Group Source Files
+
+SOURCE_GROUP("Demo Sources" FILES ${DEMO_SOURCES})
+SOURCE_GROUP("Architecture Specific Sources" FILES ${DEMO_ARCH_SOURCES})
+SOURCE_GROUP("openPOWERLINK Header Files" FILES ${OPLK_HEADERS})
+SOURCE_GROUP("Object Dictionary" FILES
+    ${COMMON_SOURCE_DIR}/obdcreate/obdcreate.c
+    ${COMMON_SOURCE_DIR}/obdcreate/obdcreate.h
+    ${OBJDICT_DIR}/${OBJDICT}/objdict.h
+    )
+	
+################################################################################
+# Set the executable
+
+ADD_EXECUTABLE(opcua2powerlink ${DEMO_SOURCES} ${DEMO_ARCH_SOURCES})
+SET_PROPERTY(TARGET opcua2powerlink
+             PROPERTY COMPILE_DEFINITIONS_DEBUG DEBUG;DEF_DEBUG_LVL=${CFG_DEBUG_LVL})
+
+################################################################################
+# Libraries to link
+
+find_package(Threads REQUIRED)
+
+OPLK_LINK_LIBRARIES(opcua2powerlink)
+
+IF(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    TARGET_LINK_LIBRARIES(opcua2powerlink ${ARCH_LIBRARIES} pthread ${CMAKE_THREAD_LIBS_INIT})
+ELSEIF(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    TARGET_LINK_LIBRARIES(opcua2powerlink ${ARCH_LIBRARIES} ws2_32 ${CMAKE_THREAD_LIBS_INIT})
+ELSE()
+    MESSAGE(FATAL_ERROR "System ${CMAKE_SYSTEM_NAME} is not supported!")
+ENDIF()
+
+
+################################################################################
+# Installation rules
+
+INSTALL(TARGETS opcua2powerlink RUNTIME DESTINATION ${PROJECT_NAME})

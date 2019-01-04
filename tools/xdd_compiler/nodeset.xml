@@ -1,0 +1,345 @@
+<UANodeSet xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:uax="http://opcfoundation.org/UA/2008/02/Types.xsd" xmlns="http://opcfoundation.org/UA/2011/03/UANodeSet.xsd" xmlns:s1="http://ethernet-powerlink.org/demo/" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <NamespaceUris>
+        <Uri>http://ethernet-powerlink.org/demo/</Uri>
+    </NamespaceUris>
+    <Aliases>
+        <Alias Alias="Byte">i=3</Alias>
+        <Alias Alias="SByte">i=2</Alias>
+        <Alias Alias="Int16">i=4</Alias>
+        <Alias Alias="Int32">i=6</Alias>
+        <Alias Alias="Organizes">i=35</Alias>
+        <Alias Alias="HasModellingRule">i=37</Alias>
+        <Alias Alias="HasTypeDefinition">i=40</Alias>
+        <Alias Alias="HasSubtype">i=45</Alias>
+        <Alias Alias="HasComponent">i=47</Alias>
+    </Aliases>
+    <UAObject NodeId="ns=1;i=1000" BrowseName="1:POWERLINK">
+        <DisplayName>POWERLINK</DisplayName>
+        <References>
+            <Reference ReferenceType="Organizes" IsForward="false">i=85</Reference>
+            <Reference ReferenceType="HasTypeDefinition">i=61</Reference>
+        </References>
+    </UAObject>
+    <UAObject NodeId="ns=1;i=200" BrowseName="1:Manufacturer">
+        <DisplayName>Manufacturer</DisplayName>
+        <References>
+            <Reference ReferenceType="Organizes" IsForward="false">ns=1;i=1000</Reference>
+            <Reference ReferenceType="HasTypeDefinition">i=61</Reference>
+        </References>
+    </UAObject>
+    <UAObject NodeId="ns=1;i=600" BrowseName="1:Standardised">
+        <DisplayName>Standardised</DisplayName>
+        <References>
+            <Reference ReferenceType="Organizes" IsForward="false">ns=1;i=1000</Reference>
+            <Reference ReferenceType="HasTypeDefinition">i=61</Reference>
+        </References>
+    </UAObject>
+    <UAObject NodeId="ns=1;i=6000" BrowseName="1:DigitalInput_00h_AU8">
+        <DisplayName>DigitalInput_00h_AU8</DisplayName>
+        <References>
+            <Reference ReferenceType="Organizes" IsForward="false">ns=1;i=600</Reference>
+            <Reference ReferenceType="HasTypeDefinition">i=58</Reference>
+            <Reference ReferenceType="HasComponent">ns=1;i=600001</Reference>
+            <Reference ReferenceType="HasComponent">ns=1;i=600002</Reference>
+            <Reference ReferenceType="HasComponent">ns=1;i=600003</Reference>
+            <Reference ReferenceType="HasComponent">ns=1;i=600004</Reference>
+        </References>
+    </UAObject>
+    <UAVariable ParentNodeId="ns=1;i=6000" NodeId="ns=1;i=600001" BrowseName="1:DigitalInput" DataType="i=3" UserAccessLevel="1" AccessLevel="1">
+        <DisplayName>DigitalInput</DisplayName>
+        <References>
+            <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+            <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=6000</Reference>
+        </References>
+        <Value>
+            <uax:Byte>0</uax:Byte>
+        </Value>
+    </UAVariable>
+    <UAVariable ParentNodeId="ns=1;i=6000" NodeId="ns=1;i=600002" BrowseName="1:DigitalInput" DataType="i=3" UserAccessLevel="1" AccessLevel="1">
+        <DisplayName>DigitalInput</DisplayName>
+        <References>
+            <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+            <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=6000</Reference>
+        </References>
+        <Value>
+            <uax:Byte>0</uax:Byte>
+        </Value>
+    </UAVariable>
+    <UAVariable ParentNodeId="ns=1;i=6000" NodeId="ns=1;i=600003" BrowseName="1:DigitalInput" DataType="i=3" UserAccessLevel="1" AccessLevel="1">
+        <DisplayName>DigitalInput</DisplayName>
+        <References>
+            <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+            <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=6000</Reference>
+        </References>
+        <Value>
+            <uax:Byte>0</uax:Byte>
+        </Value>
+    </UAVariable>
+    <UAVariable ParentNodeId="ns=1;i=6000" NodeId="ns=1;i=600004" BrowseName="1:DigitalInput" DataType="i=3" UserAccessLevel="1" AccessLevel="1">
+        <DisplayName>DigitalInput</DisplayName>
+        <References>
+            <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+            <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=6000</Reference>
+        </References>
+        <Value>
+            <uax:Byte>0</uax:Byte>
+        </Value>
+    </UAVariable>
+    <UAObject NodeId="ns=1;i=6200" BrowseName="1:DigitalOutput_00h_AU8">
+        <DisplayName>DigitalOutput_00h_AU8</DisplayName>
+        <References>
+            <Reference ReferenceType="Organizes" IsForward="false">ns=1;i=600</Reference>
+            <Reference ReferenceType="HasTypeDefinition">i=58</Reference>
+            <Reference ReferenceType="HasComponent">ns=1;i=620001</Reference>
+            <Reference ReferenceType="HasComponent">ns=1;i=620002</Reference>
+            <Reference ReferenceType="HasComponent">ns=1;i=620003</Reference>
+            <Reference ReferenceType="HasComponent">ns=1;i=620004</Reference>
+        </References>
+    </UAObject>
+    <UAVariable ParentNodeId="ns=1;i=6200" NodeId="ns=1;i=620001" BrowseName="1:DigitalOutput" DataType="i=3" UserAccessLevel="3" AccessLevel="3">
+        <DisplayName>DigitalOutput</DisplayName>
+        <References>
+            <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+            <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=6200</Reference>
+        </References>
+        <Value>
+            <uax:Byte>0</uax:Byte>
+        </Value>
+    </UAVariable>
+    <UAVariable ParentNodeId="ns=1;i=6200" NodeId="ns=1;i=620002" BrowseName="1:DigitalOutput" DataType="i=3" UserAccessLevel="3" AccessLevel="3">
+        <DisplayName>DigitalOutput</DisplayName>
+        <References>
+            <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+            <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=6200</Reference>
+        </References>
+        <Value>
+            <uax:Byte>0</uax:Byte>
+        </Value>
+    </UAVariable>
+    <UAVariable ParentNodeId="ns=1;i=6200" NodeId="ns=1;i=620003" BrowseName="1:DigitalOutput" DataType="i=3" UserAccessLevel="3" AccessLevel="3">
+        <DisplayName>DigitalOutput</DisplayName>
+        <References>
+            <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+            <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=6200</Reference>
+        </References>
+        <Value>
+            <uax:Byte>0</uax:Byte>
+        </Value>
+    </UAVariable>
+    <UAVariable ParentNodeId="ns=1;i=6200" NodeId="ns=1;i=620004" BrowseName="1:DigitalOutput" DataType="i=3" UserAccessLevel="3" AccessLevel="3">
+        <DisplayName>DigitalOutput</DisplayName>
+        <References>
+            <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+            <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=6200</Reference>
+        </References>
+        <Value>
+            <uax:Byte>0</uax:Byte>
+        </Value>
+    </UAVariable>
+    <UAObject NodeId="ns=1;i=6400" BrowseName="1:AnalogInput_00h_AI8">
+        <DisplayName>AnalogInput_00h_AI8</DisplayName>
+        <References>
+            <Reference ReferenceType="Organizes" IsForward="false">ns=1;i=600</Reference>
+            <Reference ReferenceType="HasTypeDefinition">i=58</Reference>
+            <Reference ReferenceType="HasComponent">ns=1;i=640001</Reference>
+            <Reference ReferenceType="HasComponent">ns=1;i=640002</Reference>
+            <Reference ReferenceType="HasComponent">ns=1;i=640003</Reference>
+            <Reference ReferenceType="HasComponent">ns=1;i=640004</Reference>
+        </References>
+    </UAObject>
+    <UAVariable ParentNodeId="ns=1;i=6400" NodeId="ns=1;i=640001" BrowseName="1:AnalogInput" DataType="i=2" UserAccessLevel="1" AccessLevel="1">
+        <DisplayName>AnalogInput</DisplayName>
+        <References>
+            <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+            <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=6400</Reference>
+        </References>
+        <Value>
+            <uax:SByte>0</uax:SByte>
+        </Value>
+    </UAVariable>
+    <UAVariable ParentNodeId="ns=1;i=6400" NodeId="ns=1;i=640002" BrowseName="1:AnalogInput" DataType="i=2" UserAccessLevel="1" AccessLevel="1">
+        <DisplayName>AnalogInput</DisplayName>
+        <References>
+            <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+            <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=6400</Reference>
+        </References>
+        <Value>
+            <uax:SByte>0</uax:SByte>
+        </Value>
+    </UAVariable>
+    <UAVariable ParentNodeId="ns=1;i=6400" NodeId="ns=1;i=640003" BrowseName="1:AnalogInput" DataType="i=2" UserAccessLevel="1" AccessLevel="1">
+        <DisplayName>AnalogInput</DisplayName>
+        <References>
+            <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+            <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=6400</Reference>
+        </References>
+        <Value>
+            <uax:SByte>0</uax:SByte>
+        </Value>
+    </UAVariable>
+    <UAVariable ParentNodeId="ns=1;i=6400" NodeId="ns=1;i=640004" BrowseName="1:AnalogInput" DataType="i=2" UserAccessLevel="1" AccessLevel="1">
+        <DisplayName>AnalogInput</DisplayName>
+        <References>
+            <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+            <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=6400</Reference>
+        </References>
+        <Value>
+            <uax:SByte>0</uax:SByte>
+        </Value>
+    </UAVariable>
+    <UAObject NodeId="ns=1;i=6401" BrowseName="1:AnalogInput_00h_AI16">
+        <DisplayName>AnalogInput_00h_AI16</DisplayName>
+        <References>
+            <Reference ReferenceType="Organizes" IsForward="false">ns=1;i=600</Reference>
+            <Reference ReferenceType="HasTypeDefinition">i=58</Reference>
+            <Reference ReferenceType="HasComponent">ns=1;i=640101</Reference>
+            <Reference ReferenceType="HasComponent">ns=1;i=640102</Reference>
+        </References>
+    </UAObject>
+    <UAVariable ParentNodeId="ns=1;i=6401" NodeId="ns=1;i=640101" BrowseName="1:AnalogInput" DataType="i=4" UserAccessLevel="1" AccessLevel="1">
+        <DisplayName>AnalogInput</DisplayName>
+        <References>
+            <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+            <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=6401</Reference>
+        </References>
+        <Value>
+            <uax:Int16>0</uax:Int16>
+        </Value>
+    </UAVariable>
+    <UAVariable ParentNodeId="ns=1;i=6401" NodeId="ns=1;i=640102" BrowseName="1:AnalogInput" DataType="i=4" UserAccessLevel="1" AccessLevel="1">
+        <DisplayName>AnalogInput</DisplayName>
+        <References>
+            <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+            <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=6401</Reference>
+        </References>
+        <Value>
+            <uax:Int16>0</uax:Int16>
+        </Value>
+    </UAVariable>
+    <UAObject NodeId="ns=1;i=6402" BrowseName="1:AnalogInput_00h_AI32">
+        <DisplayName>AnalogInput_00h_AI32</DisplayName>
+        <References>
+            <Reference ReferenceType="Organizes" IsForward="false">ns=1;i=600</Reference>
+            <Reference ReferenceType="HasTypeDefinition">i=58</Reference>
+            <Reference ReferenceType="HasComponent">ns=1;i=640201</Reference>
+        </References>
+    </UAObject>
+    <UAVariable ParentNodeId="ns=1;i=6402" NodeId="ns=1;i=640201" BrowseName="1:AnalogInput" DataType="i=6" UserAccessLevel="1" AccessLevel="1">
+        <DisplayName>AnalogInput</DisplayName>
+        <References>
+            <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+            <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=6402</Reference>
+        </References>
+        <Value>
+            <uax:Int32>0</uax:Int32>
+        </Value>
+    </UAVariable>
+    <UAObject NodeId="ns=1;i=6410" BrowseName="1:AnalogOutput_00h_AI8">
+        <DisplayName>AnalogOutput_00h_AI8</DisplayName>
+        <References>
+            <Reference ReferenceType="Organizes" IsForward="false">ns=1;i=600</Reference>
+            <Reference ReferenceType="HasTypeDefinition">i=58</Reference>
+            <Reference ReferenceType="HasComponent">ns=1;i=641001</Reference>
+            <Reference ReferenceType="HasComponent">ns=1;i=641002</Reference>
+            <Reference ReferenceType="HasComponent">ns=1;i=641003</Reference>
+            <Reference ReferenceType="HasComponent">ns=1;i=641004</Reference>
+        </References>
+    </UAObject>
+    <UAVariable ParentNodeId="ns=1;i=6410" NodeId="ns=1;i=641001" BrowseName="1:AnalogOutput" DataType="i=2" UserAccessLevel="3" AccessLevel="3">
+        <DisplayName>AnalogOutput</DisplayName>
+        <References>
+            <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+            <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=6410</Reference>
+        </References>
+        <Value>
+            <uax:SByte>0</uax:SByte>
+        </Value>
+    </UAVariable>
+    <UAVariable ParentNodeId="ns=1;i=6410" NodeId="ns=1;i=641002" BrowseName="1:AnalogOutput" DataType="i=2" UserAccessLevel="3" AccessLevel="3">
+        <DisplayName>AnalogOutput</DisplayName>
+        <References>
+            <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+            <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=6410</Reference>
+        </References>
+        <Value>
+            <uax:SByte>0</uax:SByte>
+        </Value>
+    </UAVariable>
+    <UAVariable ParentNodeId="ns=1;i=6410" NodeId="ns=1;i=641003" BrowseName="1:AnalogOutput" DataType="i=2" UserAccessLevel="3" AccessLevel="3">
+        <DisplayName>AnalogOutput</DisplayName>
+        <References>
+            <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+            <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=6410</Reference>
+        </References>
+        <Value>
+            <uax:SByte>0</uax:SByte>
+        </Value>
+    </UAVariable>
+    <UAVariable ParentNodeId="ns=1;i=6410" NodeId="ns=1;i=641004" BrowseName="1:AnalogOutput" DataType="i=2" UserAccessLevel="3" AccessLevel="3">
+        <DisplayName>AnalogOutput</DisplayName>
+        <References>
+            <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+            <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=6410</Reference>
+        </References>
+        <Value>
+            <uax:SByte>0</uax:SByte>
+        </Value>
+    </UAVariable>
+    <UAObject NodeId="ns=1;i=6411" BrowseName="1:AnalogOutput_00h_AI16">
+        <DisplayName>AnalogOutput_00h_AI16</DisplayName>
+        <References>
+            <Reference ReferenceType="Organizes" IsForward="false">ns=1;i=600</Reference>
+            <Reference ReferenceType="HasTypeDefinition">i=58</Reference>
+            <Reference ReferenceType="HasComponent">ns=1;i=641101</Reference>
+            <Reference ReferenceType="HasComponent">ns=1;i=641102</Reference>
+        </References>
+    </UAObject>
+    <UAVariable ParentNodeId="ns=1;i=6411" NodeId="ns=1;i=641101" BrowseName="1:AnalogOutput" DataType="i=4" UserAccessLevel="3" AccessLevel="3">
+        <DisplayName>AnalogOutput</DisplayName>
+        <References>
+            <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+            <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=6411</Reference>
+        </References>
+        <Value>
+            <uax:Int16>0</uax:Int16>
+        </Value>
+    </UAVariable>
+    <UAVariable ParentNodeId="ns=1;i=6411" NodeId="ns=1;i=641102" BrowseName="1:AnalogOutput" DataType="i=4" UserAccessLevel="3" AccessLevel="3">
+        <DisplayName>AnalogOutput</DisplayName>
+        <References>
+            <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+            <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=6411</Reference>
+        </References>
+        <Value>
+            <uax:Int16>0</uax:Int16>
+        </Value>
+    </UAVariable>
+    <UAObject NodeId="ns=1;i=6412" BrowseName="1:AnalogOutput_00h_AI32">
+        <DisplayName>AnalogOutput_00h_AI32</DisplayName>
+        <References>
+            <Reference ReferenceType="Organizes" IsForward="false">ns=1;i=600</Reference>
+            <Reference ReferenceType="HasTypeDefinition">i=58</Reference>
+            <Reference ReferenceType="HasComponent">ns=1;i=641201</Reference>
+        </References>
+    </UAObject>
+    <UAVariable ParentNodeId="ns=1;i=6412" NodeId="ns=1;i=641201" BrowseName="1:AnalogOutput" DataType="i=6" UserAccessLevel="3" AccessLevel="3">
+        <DisplayName>AnalogOutput</DisplayName>
+        <References>
+            <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+            <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=6412</Reference>
+        </References>
+        <Value>
+            <uax:Int32>0</uax:Int32>
+        </Value>
+    </UAVariable>
+    <UAVariable ParentNodeId="ns=1;i=1000" NodeId="ns=1;i=1001" BrowseName="1:OperationStatus" DataType="i=12" UserAccessLevel="1" AccessLevel="1">
+        <DisplayName>OperationStatus</DisplayName>
+        <References>
+            <Reference ReferenceType="HasTypeDefinition">i=63</Reference>
+            <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=1000</Reference>
+        </References>
+        <Value>
+            <uax:String>Init</uax:String>
+        </Value>
+    </UAVariable>
+</UANodeSet>

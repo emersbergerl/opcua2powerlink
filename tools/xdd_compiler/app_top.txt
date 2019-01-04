@@ -1,0 +1,68 @@
+//------------------------------------------------------------------------------
+// local function prototypes
+//------------------------------------------------------------------------------
+static tOplkError   initProcessImage(void);
+
+//============================================================================//
+//            P U B L I C   F U N C T I O N S                                 //
+//============================================================================//
+
+//------------------------------------------------------------------------------
+/**
+\brief  Initialize the synchronous data application
+
+The function initializes the synchronous data application
+
+\return The function returns a tOplkError error code.
+
+\ingroup module_demo_cn_console
+*/
+//------------------------------------------------------------------------------
+tOplkError initApp(void)
+{
+    tOplkError  ret;
+
+    ret = initProcessImage();
+
+    return ret;
+}
+
+//------------------------------------------------------------------------------
+/**
+\brief  Shutdown the synchronous data application
+
+The function shuts down the synchronous data application
+
+\return The function returns a tOplkError error code.
+
+\ingroup module_demo_cn_console
+*/
+//------------------------------------------------------------------------------
+void shutdownApp(void)
+{
+    oplk_freeProcessImage();
+}
+
+//------------------------------------------------------------------------------
+/**
+\brief  Synchronous data handler
+
+The function implements the synchronous data handler.
+
+\return The function returns a tOplkError error code.
+
+\ingroup module_demo_cn_console
+*/
+//------------------------------------------------------------------------------
+tOplkError processSync(void)
+{
+    tOplkError  ret = kErrorOk;
+
+    if (oplk_waitSyncEvent(100000) != kErrorOk)
+        return ret;
+
+    ret = oplk_exchangeProcessImageOut();
+    if (ret != kErrorOk)
+        return ret;
+
+// setup input image - digital outputs

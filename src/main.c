@@ -1,0 +1,626 @@
+/**
+********************************************************************************
+\file   main.c
+
+\brief  Main file of console CN demo application
+
+This file contains the main file of the openPOWERLINK CN console demo
+application.
+
+\ingroup module_demo_cn_console
+*******************************************************************************/
+
+/*------------------------------------------------------------------------------
+Copyright (c) 2017, B&R Industrial Automation GmbH
+Copyright (c) 2013, SYSTEC electronic GmbH
+Copyright (c) 2013, Kalycito Infotech Private Ltd.All rights reserved.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
+      documentation and/or other materials provided with the distribution.
+    * Neither the name of the copyright holders nor the
+      names of its contributors may be used to endorse or promote products
+      derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL COPYRIGHT HOLDERS BE LIABLE FOR ANY
+DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+------------------------------------------------------------------------------*/
+
+//------------------------------------------------------------------------------
+// includes
+//------------------------------------------------------------------------------
+#include <app/app.h>
+#include <app/event.h>
+
+#include <oplk/oplk.h>
+#include <oplk/debugstr.h>
+
+#include <opcua/open62541.h>
+#include <opcua/nodeset.h>
+#include <system/system.h>
+#include <obdcreate/obdcreate.h>
+
+#if (TARGET_SYSTEM == _WIN32_)
+#include <getopt/getopt.h>
+#include <windows.h>
+#include <WinSock2.h>
+#else
+#include <unistd.h>
+#endif
+
+#include <console/console.h>
+#include <eventlog/eventlog.h>
+#include <netselect/netselect.h>
+
+#include <stdio.h>
+#include <limits.h>
+
+//============================================================================//
+//            G L O B A L   D E F I N I T I O N S                             //
+//============================================================================//
+
+//------------------------------------------------------------------------------
+// const defines
+//------------------------------------------------------------------------------
+#define CYCLE_LEN           50000
+#define NODEID              1                   // could be changed by command param
+#define IP_ADDR             0xc0a86401          // 192.168.100.1
+#define DEFAULT_GATEWAY     0xC0A864FE          // 192.168.100.C_ADR_RT1_DEF_NODE_ID
+#define SUBNET_MASK         0xFFFFFF00          // 255.255.255.0
+#define OPCUA_PORT			4840
+#define OPCUA_IP			"192.168.0.1"
+
+//------------------------------------------------------------------------------
+// module global vars
+//------------------------------------------------------------------------------
+
+//------------------------------------------------------------------------------
+// global function prototypes
+//------------------------------------------------------------------------------
+
+//============================================================================//
+//            P R I V A T E   D E F I N I T I O N S                           //
+//============================================================================//
+
+//------------------------------------------------------------------------------
+// const defines
+//------------------------------------------------------------------------------
+
+//------------------------------------------------------------------------------
+// local types
+//------------------------------------------------------------------------------
+typedef struct
+{
+    UINT32          nodeId;
+    tEventlogFormat logFormat;
+    UINT32          logLevel;
+    UINT32          logCategory;
+    char            devName[128];
+} tOptions;
+
+//------------------------------------------------------------------------------
+// local vars
+//------------------------------------------------------------------------------
+static const UINT8  aMacAddr_l[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+static BOOL         fGsOff_l;
+UA_Boolean running = true;
+
+//------------------------------------------------------------------------------
+// local function prototypes
+//------------------------------------------------------------------------------
+static int        getOptions(int argc_p,
+                             char* const argv_p[],
+                             tOptions* pOpts_p);
+static tOplkError initPowerlink(UINT32 cycleLen_p,
+                                const char* devName_p,
+                                const UINT8* macAddr_p,
+                                UINT32 nodeId_p);
+DWORD WINAPI      OPCUA_thread(void);
+static void       loopMain();
+static void       shutdownPowerlink(void);
+
+//============================================================================//
+//            P U B L I C   F U N C T I O N S                                 //
+//============================================================================//
+
+//------------------------------------------------------------------------------
+/**
+\brief  main function
+
+This is the main function of the openPOWERLINK console CN demo application.
+
+\param[in]      argc                Number of arguments
+\param[in]      argv                Pointer to argument strings
+
+\return Returns an exit code
+
+\ingroup module_demo_cn_console
+*/
+//------------------------------------------------------------------------------
+int main(int argc, char* argv[])
+{
+    tOplkError  ret = kErrorOk;
+    tOptions    opts;
+
+    if (getOptions(argc, argv, &opts) < 0)
+        return 0;
+
+    if (system_init() != 0)
+    {
+        fprintf(stderr, "Error initializing system!");
+        return 0;
+    }
+
+    eventlog_init(opts.logFormat,
+                  opts.logLevel,
+                  opts.logCategory,
+                  (tEventlogOutputCb)console_printlogadd);
+
+    initEvents(&fGsOff_l);
+
+    printf("----------------------------------------------------\n");
+    printf("OPCUA2OPLK Demo application \n");
+    printf("Using openPOWERLINK stack: %s\n", oplk_getVersionString());
+    printf("----------------------------------------------------\n");
+
+    eventlog_printMessage(kEventlogLevelInfo,
+                          kEventlogCategoryGeneric,
+                          "demo_cn_console: Stack version:%s Stack configuration:0x%08X",
+                          oplk_getVersionString(),
+                          oplk_getStackConfiguration());
+
+    ret = initPowerlink(CYCLE_LEN,
+                        opts.devName,
+                        aMacAddr_l,
+                        opts.nodeId);
+    if (ret != kErrorOk)
+        goto Exit;
+	
+    ret = initApp();
+    if (ret != kErrorOk)
+        goto Exit;
+
+    loopMain();
+
+Exit:
+    shutdownApp();
+    shutdownPowerlink();
+    system_exit();
+
+    return 0;
+}
+
+//============================================================================//
+//            P R I V A T E   F U N C T I O N S                               //
+//============================================================================//
+/// \name Private Functions
+/// \{
+
+//------------------------------------------------------------------------------
+/**
+\brief  Initialize the openPOWERLINK stack
+
+The function initializes the openPOWERLINK stack.
+
+\param[in]      cycleLen_p          Length of POWERLINK cycle.
+\param[in]      devName_p           Device name string.
+\param[in]      macAddr_p           MAC address to use for POWERLINK interface.
+\param[in]      nodeId_p            POWERLINK node ID.
+
+\return The function returns a tOplkError error code.
+*/
+//------------------------------------------------------------------------------
+static tOplkError initPowerlink(UINT32 cycleLen_p,
+                                const char* devName_p,
+                                const UINT8* macAddr_p,
+                                UINT32 nodeId_p)
+{
+    tOplkError          ret = kErrorOk;
+    tOplkApiInitParam   initParam;
+    static char         devName[128];
+
+    printf("Initializing openPOWERLINK stack...\n");
+    eventlog_printMessage(kEventlogLevelInfo,
+                          kEventlogCategoryControl,
+                          "Initializing openPOWERLINK stack");
+
+    eventlog_printMessage(kEventlogLevelInfo,
+                          kEventlogCategoryGeneric,
+                          "Select the network interface");
+    if (devName_p[0] == '\0')
+    {
+        if (netselect_selectNetworkInterface(devName, sizeof(devName)) < 0)
+            return kErrorIllegalInstance;
+    }
+    else
+        strncpy(devName, devName_p, 128);
+
+    memset(&initParam, 0, sizeof(initParam));
+    initParam.sizeOfInitParam = sizeof(initParam);
+
+    // pass selected device name to Edrv
+    initParam.hwParam.pDevName = devName;
+    initParam.nodeId = nodeId_p;
+    initParam.ipAddress = (0xFFFFFF00 & IP_ADDR) | initParam.nodeId;
+
+    /* write 00:00:00:00:00:00 to MAC address, so that the driver uses the real hardware address */
+    memcpy(initParam.aMacAddress, macAddr_p, sizeof(initParam.aMacAddress));
+
+    initParam.fAsyncOnly              = FALSE;
+    initParam.featureFlags            = UINT_MAX;
+    initParam.cycleLen                = cycleLen_p;             // required for error detection
+    initParam.isochrTxMaxPayload      = C_DLL_ISOCHR_MAX_PAYL;  // const
+    initParam.isochrRxMaxPayload      = C_DLL_ISOCHR_MAX_PAYL;  // const
+    initParam.presMaxLatency          = 50000;                  // const; only required for IdentRes
+    initParam.preqActPayloadLimit     = 36;                     // required for initialization (+28 bytes)
+    initParam.presActPayloadLimit     = 36;                     // required for initialization of Pres frame (+28 bytes)
+    initParam.asndMaxLatency          = 150000;                 // const; only required for IdentRes
+    initParam.multiplCylceCnt         = 0;                      // required for error detection
+    initParam.asyncMtu                = 1500;                   // required to set up max frame size
+    initParam.prescaler               = 2;                      // required for sync
+    initParam.lossOfFrameTolerance    = 500000;
+    initParam.asyncSlotTimeout        = 3000000;
+    initParam.waitSocPreq             = 1000;
+    initParam.deviceType              = UINT_MAX;               // NMT_DeviceType_U32
+    initParam.vendorId                = UINT_MAX;               // NMT_IdentityObject_REC.VendorId_U32
+    initParam.productCode             = UINT_MAX;               // NMT_IdentityObject_REC.ProductCode_U32
+    initParam.revisionNumber          = UINT_MAX;               // NMT_IdentityObject_REC.RevisionNo_U32
+    initParam.serialNumber            = UINT_MAX;               // NMT_IdentityObject_REC.SerialNo_U32
+    initParam.applicationSwDate       = 0;
+    initParam.applicationSwTime       = 0;
+    initParam.subnetMask              = SUBNET_MASK;
+    initParam.defaultGateway          = DEFAULT_GATEWAY;
+    sprintf((char*)initParam.sHostname, "%02x-%08x", initParam.nodeId, initParam.vendorId);
+    initParam.syncNodeId              = C_ADR_SYNC_ON_SOA;
+    initParam.fSyncOnPrcNode          = FALSE;
+
+    // set callback functions
+    initParam.pfnCbEvent = processEvents;
+
+#if defined(CONFIG_KERNELSTACK_DIRECTLINK)
+    initParam.pfnCbSync = processSync;
+#else
+    initParam.pfnCbSync = NULL;
+#endif
+
+    // Initialize object dictionary
+    ret = obdcreate_initObd(&initParam.obdInitParam);
+    if (ret != kErrorOk)
+    {
+        fprintf(stderr,
+                "obdcreate_initObd() failed with \"%s\" (0x%04x)\n",
+                debugstr_getRetValStr(ret),
+                ret);
+        eventlog_printMessage(kEventlogLevelFatal,
+                              kEventlogCategoryControl,
+                              "obdcreate_initObd() failed with \"%s\" (0x%04x)\n",
+                              debugstr_getRetValStr(ret),
+                              ret);
+        return ret;
+    }
+
+    // initialize POWERLINK stack
+    ret = oplk_initialize();
+    if (ret != kErrorOk)
+    {
+        fprintf(stderr,
+                "oplk_initialize() failed with \"%s\" (0x%04x)\n",
+                debugstr_getRetValStr(ret),
+                ret);
+        eventlog_printMessage(kEventlogLevelFatal,
+                              kEventlogCategoryControl,
+                              "oplk_initialize() failed with \"%s\" (0x%04x)\n",
+                              debugstr_getRetValStr(ret),
+                              ret);
+        return ret;
+    }
+
+    ret = oplk_create(&initParam);
+    if (ret != kErrorOk)
+    {
+        fprintf(stderr,
+                "oplk_create() failed with \"%s\" (0x%04x)\n",
+                debugstr_getRetValStr(ret),
+                ret);
+        eventlog_printMessage(kEventlogLevelFatal,
+                              kEventlogCategoryControl,
+                              "oplk_create() failed with \"%s\" (0x%04x)\n",
+                              debugstr_getRetValStr(ret),
+                              ret);
+        return ret;
+    }
+
+    return kErrorOk;
+}
+
+DWORD WINAPI OPCUA_thread(void)
+{
+	// Create a OPCUA Server with the defined port
+	UA_ServerConfig *config = UA_ServerConfig_new_minimal(OPCUA_PORT, NULL);
+
+	UA_String name;
+	UA_String_init(&name);
+
+	name.length = strlen(OPCUA_IP);
+	name.data   = (UA_Byte *)OPCUA_IP;
+
+	UA_ServerConfig_set_customHostname(config, name);
+	
+	config->applicationDescription.applicationName.text = UA_STRING("OPCUA To POWERLINK");
+	config->applicationDescription.discoveryProfileUri = UA_String_fromChars("OPCUA To POWERLINK");
+	config->buildInfo.productName = UA_STRING("OPCUA To POWERLINK");
+	config->endpoints->endpointDescription.server.applicationName.text = UA_STRING("OPCUA To POWERLINK");
+
+	UA_Server *server = UA_Server_new(config);
+
+	// Add a repeated callback to the server ( currently every 2 sec )
+	UA_Server_addRepeatedCallback(server, callbackOPCUA, NULL, 2000, NULL);
+
+	UA_StatusCode retval;
+	// create nodes from nodeset
+	if (nodeset(server) != UA_STATUSCODE_GOOD) {
+		UA_LOG_ERROR(UA_Log_Stdout, UA_LOGCATEGORY_SERVER, "Could not add the example nodeset. "
+			"Check previous output for any error.");
+		retval = UA_STATUSCODE_BADUNEXPECTEDERROR;
+	}
+	else {
+		UA_Server_run(server, &running);
+		UA_Server_run_shutdown(server);
+	}
+
+	printf("Stopped Thread!\n");
+	return 0;
+}
+
+//------------------------------------------------------------------------------
+/**
+\brief  Main loop of demo application
+
+This function implements the main loop of the demo application.
+- It creates the sync thread which is responsible for the synchronous data
+  application.
+- It sends a NMT command to start the stack
+- It loops and reacts on commands from the command line.
+*/
+//------------------------------------------------------------------------------
+static void loopMain()
+{
+    tOplkError  ret;
+    char        cKey = 0;
+    BOOL        fExit = FALSE;
+
+#if !defined(CONFIG_KERNELSTACK_DIRECTLINK)
+
+#if defined(CONFIG_USE_SYNCTHREAD)
+    system_startSyncThread(processSync);
+#endif
+
+#endif
+
+	printf("Start POWERLINK stack... ok\n");
+	printf("Digital I/O interface with openPOWERLINK is ready!\n");
+	printf("\n-------------------------------\n");
+	printf("Press Esc to leave the program\n");
+	printf("Press r to reset the node\n");
+	printf("Press i to print the inputs\n");
+	printf("Press o to print the outputs\n");
+	printf("-------------------------------\n\n");
+
+    // start processing
+    ret = oplk_execNmtCommand(kNmtEventSwReset);
+    if (ret != kErrorOk)
+        return;
+
+    setupInputs();
+
+	// start the OPCUA Server thread
+#if (TARGET_SYSTEM == _WIN32_)
+	HANDLE OPCUA_HANDLE = 0;
+
+	// create the thread
+	OPCUA_HANDLE = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)OPCUA_thread, NULL, 0, NULL);
+	// if there was some problem then close the thread
+	if (OPCUA_HANDLE == NULL) {
+		ExitProcess(0);
+		printf("Error creating the OPCUA Server!\n");
+		return;
+	}
+#else
+
+#endif
+
+
+    // wait for key hit
+    while (!fExit)
+    {
+        if (console_kbhit())
+        {
+            cKey = (char)console_getch();
+
+            switch (cKey)
+            {
+                case 'r':
+                    ret = oplk_execNmtCommand(kNmtEventSwReset);
+                    if (ret != kErrorOk)
+                        fExit = TRUE;
+                    break;
+
+                case 'i':
+                    printInputs();
+                    break;
+
+                case 'o':
+                    printOutputs();
+                    break;
+
+                case 0x1B:
+                    fExit = TRUE;
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
+        if (system_getTermSignalState() != FALSE)
+        {
+            fExit = TRUE;
+            printf("Received termination signal, exiting...\n");
+            eventlog_printMessage(kEventlogLevelInfo,
+                                  kEventlogCategoryControl,
+                                  "Received termination signal, exiting...");
+        }
+
+        if (oplk_checkKernelStack() == FALSE)
+        {
+            fExit = TRUE;
+            fprintf(stderr, "Kernel stack has gone! Exiting...\n");
+            eventlog_printMessage(kEventlogLevelFatal,
+                                  kEventlogCategoryControl,
+                                  "Kernel stack has gone! Exiting...");
+        }
+
+#if (defined(CONFIG_USE_SYNCTHREAD) || \
+     defined(CONFIG_KERNELSTACK_DIRECTLINK))
+        system_msleep(100);
+#else
+        processSync();
+#endif
+    }
+
+	// stop the OPCUA Server thread
+#if (TARGET_SYSTEM == _WIN32_)
+	running = false;
+	printf("Stopping OPCUA Server thread!\n");
+	WaitForSingleObject(OPCUA_HANDLE, INFINITE);
+	CloseHandle(OPCUA_HANDLE);
+#else
+
+#endif
+
+#if (TARGET_SYSTEM == _WIN32_)
+    printf("Press Enter to quit!\n");
+    console_getch();
+#endif
+}
+
+//------------------------------------------------------------------------------
+/**
+\brief  Shutdown the demo application
+
+The function shuts down the demo application.
+*/
+//------------------------------------------------------------------------------
+static void shutdownPowerlink(void)
+{
+    UINT    i;
+
+    fGsOff_l = FALSE;
+
+#if (!defined(CONFIG_KERNELSTACK_DIRECTLINK) && \
+     defined(CONFIG_USE_SYNCTHREAD))
+    system_stopSyncThread();
+    system_msleep(100);
+#endif
+
+    // halt the NMT state machine so the processing of POWERLINK frames stops
+    oplk_execNmtCommand(kNmtEventSwitchOff);
+
+    // small loop to implement timeout waiting for thread to terminate
+    for (i = 0; i < 1000; i++)
+    {
+        if (fGsOff_l)
+            break;
+    }
+
+    printf("Stack is in state off ... Shutdown\n");
+    eventlog_printMessage(kEventlogLevelInfo,
+                          kEventlogCategoryControl,
+                          "Stack is in state off ... Shutdown openPOWERLINK");
+
+    oplk_destroy();
+    oplk_exit();
+}
+
+//------------------------------------------------------------------------------
+/**
+\brief  Get command line parameters
+
+The function parses the supplied command line parameters and stores the
+options at pOpts_p.
+
+\param[in]      argc_p              Argument count.
+\param[in]      argv_p              Pointer to arguments.
+\param[out]     pOpts_p             Pointer to store options
+
+\return The function returns the parsing status.
+\retval 0           Successfully parsed
+\retval -1          Parsing error
+*/
+//------------------------------------------------------------------------------
+static int getOptions(int argc_p,
+                      char* const argv_p[],
+                      tOptions* pOpts_p)
+{
+    int opt;
+
+    /* setup default parameters */
+    strncpy(pOpts_p->devName, "\0", 128);
+    pOpts_p->nodeId = NODEID;
+    pOpts_p->logFormat = kEventlogFormatReadable;
+    pOpts_p->logCategory = 0xffffffff;
+    pOpts_p->logLevel = 0xffffffff;
+
+    /* get command line parameters */
+    while ((opt = getopt(argc_p, argv_p, "n:pv:t:d:")) != -1)
+    {
+        switch (opt)
+        {
+            case 'n':
+                pOpts_p->nodeId = strtoul(optarg, NULL, 10);
+                break;
+
+            case 'd':
+                strncpy(pOpts_p->devName, optarg, 128);
+                break;
+
+            case 'p':
+                pOpts_p->logFormat = kEventlogFormatParsable;
+                break;
+
+           case 'v':
+                pOpts_p->logLevel = strtoul(optarg, NULL, 16);
+                break;
+
+           case 't':
+                pOpts_p->logCategory = strtoul(optarg, NULL, 16);
+                break;
+
+            default: /* '?' */
+                printf("Usage: %s [-n NODE_ID] [-l LOGFILE] [-d DEV_NAME] [-v LOGLEVEL] [-t LOGCATEGORY] [-p]\n", argv_p[0]);
+                printf(" -d DEV_NAME: Ethernet device name to use e.g. eth1\n");
+                printf("              If option is skipped the program prompts for the interface.\n");
+                printf(" -p: Use parsable log format\n");
+                printf(" -v LOGLEVEL: A bit mask with log levels to be printed in the event logger\n");
+                printf(" -t LOGCATEGORY: A bit mask with log categories to be printed in the event logger\n");
+
+                return -1;
+        }
+    }
+    return 0;
+}
+
+/// \}

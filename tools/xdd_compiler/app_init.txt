@@ -1,0 +1,42 @@
+
+//============================================================================//
+//            P R I V A T E   F U N C T I O N S                               //
+//============================================================================//
+/// \name Private Functions
+/// \{
+
+//------------------------------------------------------------------------------
+/**
+\brief  Initialize process image
+
+The function initializes the process image of the application.
+
+\return The function returns a tOplkError error code.
+*/
+//------------------------------------------------------------------------------
+static tOplkError initProcessImage(void)
+{
+    tOplkError  ret = kErrorOk;
+    UINT        varEntries;
+    tObdSize    obdSize;
+
+    /* Allocate process image */
+    printf("Initializing process image...\n");
+    printf("Size of process image: Input = %lu Output = %lu \n",
+           (ULONG)sizeof(PI_IN),
+           (ULONG)sizeof(PI_OUT));
+    eventlog_printMessage(kEventlogLevelInfo,
+                          kEventlogCategoryGeneric,
+                          "Allocating process image: Input:%lu Output:%lu",
+                          (ULONG)sizeof(PI_IN),
+                          (ULONG)sizeof(PI_OUT));
+
+    ret = oplk_allocProcessImage(sizeof(PI_IN), sizeof(PI_OUT));
+    if (ret != kErrorOk)
+        return ret;
+
+    pProcessImageIn_l = (PI_IN*)oplk_getProcessImageIn();
+    pProcessImageOut_l = (const PI_OUT*)oplk_getProcessImageOut();
+
+    /* link process variables used by CN to object dictionary */
+    fprintf(stderr, "Linking process image vars:\n");

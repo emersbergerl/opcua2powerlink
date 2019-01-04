@@ -1,0 +1,9 @@
+    if (ret != kErrorOk)
+    {
+        fprintf(stderr,
+                "Linking process vars failed with \"%s\" (0x%04x)\n",
+                debugstr_getRetValStr(ret),
+                ret);
+        return ret;
+    }
+	
