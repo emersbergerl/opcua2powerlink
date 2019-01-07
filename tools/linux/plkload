@@ -1,0 +1,243 @@
+#!/bin/bash
+################################################################################
+#
+# \file  plkload
+#
+# \brief Script to load openPOWERLINK kernel module
+#
+# Copyright (c) 2013, SYSTEC electronic GmbH
+# Copyright (c) 2014, B&R Industrial Automation GmbH
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#     * Redistributions of source code must retain the above copyright
+#       notice, this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#     * Neither the name of the copyright holders nor the
+#       names of its contributors may be used to endorse or promote products
+#       derived from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL COPYRIGHT HOLDERS BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+# ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+################################################################################
+
+###############################################################################
+# Print usage of script
+#
+usage()
+{
+    echo >&2 \
+    "usage: plkload [-h] [-t <tracer>] [-s] <powerlink_module> [module args]\n" \
+    "-s, set priority (used by udev rule)\n" \
+    "-t, set ftrace tracer\n" \
+    "-h, print usage\n"
+    exit 1
+}
+
+loadfail()
+{
+    echo "  Failed"
+    echo
+    echo "  No network interface controller with"
+    echo "  $nic chip found!"
+    echo
+    echo "The powerlink module cannot be loaded!"
+    echo
+
+    exit 1
+}
+
+###############################################################################
+# set defaults
+#
+module=
+setprio=false
+tracing=nop
+
+###############################################################################
+# Read command line arguments
+#
+while [ $# -gt 0 ]
+do
+    case "$1" in
+        -s)     setprio=true;;
+        -t)     tracing=$2; shift;;
+        --)     shift; break;;
+        -h)     usage ;;
+        *)      module=$1; shift; break;;
+    esac
+    shift
+done
+
+###############################################################################
+# Get Main kernel version
+KERNEL_MAIN=`uname -r | cut -f1 -d.`
+
+###############################################################################
+# Used by udev rule to set priority
+if [ "$setprio" = "true" ] ; then
+
+    # Change thread parameters of plk irq threads
+    irqthreads=`ps -e -o pid,comm --no-headers | grep irq/.*plk | sed 's/^ *//' | cut -f1 -d" "`
+    for pid in $irqthreads ; do
+        # Set real-time priority -81 for Ethernet ISR thread
+        chrt -f -p 80 $pid
+        # Bind thread to second core
+        taskset -p 2 $pid
+    done
+
+    # Bind openPowerlink interrupts to second core
+    interrupts=`cat /proc/interrupts | grep plk | cut -f1 -d: -s | sed 's/^ *//'`
+    for irq in $interrupts ; do
+        echo 2 > /proc/irq/$irq/smp_affinity
+    done
+
+    exit
+fi
+
+###############################################################################
+# must be root to load module
+if [ $USER != "root" ] ; then
+    echo "Please run 'sudo $0'"
+    exit
+fi
+
+###############################################################################
+#
+# Check if high resolution timer support is available
+#
+echo -n "Check if high resolution timer support is available..."
+
+cat /proc/timer_list | grep 'hres_active.*1' > /dev/null
+if [ "$?" -ne "0" ] ; then
+    echo "  Failed"
+    echo
+    echo "  High resolution timer support is NOT active."
+    echo "  Maybe you need to add 'acpi=force' to kernel command line"
+    echo "  or try it on a more recent X86 processor."
+    echo
+    echo "The POWERLINK module is and will not be loaded!"
+    echo
+    exit
+else
+    echo "  OK"
+fi
+
+###############################################################################
+#
+# Check if module does exist
+#
+if [ ! -f  `dirname $0`/$module ] ; then
+    echo "  openPOWERLINK module `dirname $0`/$module does not exist!"
+    echo "  Please specify an existing module!"
+    exit 1
+fi
+
+moduleId=`basename $module .ko`
+# strip off last two characters (mn/cn)
+moduleId=${moduleId:0:${#moduleId}-2}
+
+###############################################################################
+#
+# Check if suitable ethernet card is available
+# If we find more than one ethernet card we provide a prompt to select one.
+#
+let i=0
+while read line; do
+    device=`echo $line | cut -f1 -d","`
+    devname=`echo $line | cut -f2 -d","`
+    driver=`echo $line | cut -f3 -d","`
+
+    if echo "$moduleId" | grep -q "$device" ; then
+        while read lspci ; do
+                if [ ! -z "$lspci" ]; then
+                    let i=i+1
+                    pciid=$(echo $lspci | awk "{printf \"0000:\"\$1}")
+                    echo "$i) $lspci"
+                    if [ -z $devs ] ; then
+                        devs="$pciid"
+                        drivers="$driver"
+                    else
+                        devs="$devs,$pciid"
+                        drivers="$drivers,$driver"
+                    fi
+                fi
+        done < <(lspci | grep "${devname}")
+    fi
+done < devices.txt
+
+if [ $i -gt 1 ] ; then
+    read -p "Please select the ethernet controller to use > " num
+elif [ $i -eq 1 ]; then
+    num=1
+elif [ $i -eq 0 ] ; then
+    loadfail
+fi
+
+pciid=`echo $devs | cut -f$num -d","`
+driver=`echo $drivers | cut -f$num -d","`
+
+echo "unbinding PCI device $pciid"
+echo -n $pciid > "/sys/bus/pci/drivers/${driver}/unbind"
+
+###############################################################################
+#
+# install special udev rule for kernel stack module (without demo!)
+if [ -d /etc/udev/rules.d ] ; then
+    PLKLOAD_PATH=`dirname $(readlink -f ${0})`
+    cat 50-openPOWERLINK.rules | sed "s#PLKLOAD_PATH#${PLKLOAD_PATH}#" > /etc/udev/rules.d/50-openPOWERLINK.rules
+    udevadm control --reload-rules
+fi
+
+echo "Loading POWERLINK module ..."
+
+# invoke insmod with all arguments we got
+# and use a pathname, as insmod doesn't look in . by default
+/sbin/insmod `dirname $0`/$module $*
+
+if [ "$?" -ne "0" ] ; then
+    echo " Loading of POWERLINK module failed"
+    exit 1
+else
+    echo "POWERLINK module successfully loaded."
+    echo
+    echo "Please start the POWERLINK demo application."
+    echo
+fi
+
+# Set real-time priority -82 for hrtimer thread if existing (only for 2.6.X realtime kernels)
+# We only have to set hrtimer thread for core 1 because the stack
+# binds to the second core!
+numproc=`ps aux | grep -c "sirq-hrtimer/1"`
+if [ $numproc -gt 1 ] ; then
+    echo Adjusting priority of hrtimer thread
+    chrt -f -p 81 `ps -C sirq-hrtimer/1 -o pid --no-headers`
+fi
+
+# Enable tracing
+if [ ! "$tracing" = "nop" ] ; then
+    echo $tracing > /sys/kernel/debug/tracing/current_tracer
+    #echo function       > /sys/kernel/debug/tracing/current_tracer
+    #echo sched_switch   > /sys/kernel/debug/tracing/current_tracer
+    #echo function_graph > /sys/kernel/debug/tracing/current_tracer
+    echo 'dllk_* edrvcyclic_* edrvIrqHandler pdok_* eventk_* nmtk_* oplk_*' > /sys/kernel/debug/tracing/set_ftrace_filter
+    echo funcgraph-abstime > /sys/kernel/debug/tracing/trace_options
+    echo 1 > /sys/kernel/debug/tracing/tracing_enabled
+    chmod o+w /sys/kernel/debug/tracing/tracing_enabled
+fi
+
+exit 0
+
+

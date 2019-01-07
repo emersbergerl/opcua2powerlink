@@ -1,0 +1,75 @@
+#!/bin/sh
+#
+# Shell script to set priority of some important kernel threads
+#
+
+interface=
+
+usage()
+{
+        echo >&2 \
+        "usage: set_prio <network_interface>\n"
+        exit 1
+}
+
+if [ $USER != "root" ] ; then
+  echo "Please run 'sudo $0'"
+  exit
+fi
+
+if [ "$#" -ne "1" ] ; then
+    usage
+else
+    interface=$1
+fi
+
+###############################################################################
+# Get Main kernel version
+KERNEL_MAIN=`uname -r | cut -f1 -d.`
+
+echo -n "Check if high resolution timer support is available..."
+
+cat /proc/timer_list | grep 'hres_active.*1' > /dev/null
+if [ "$?" -ne "0" ] ; then
+  echo "  Failed"
+  echo
+  echo "  High resolution timer support is NOT active."
+  echo "  Maybe you need to add 'acpi=force' to kernel command line"
+  echo "  or try it on a more recent X86 processor."
+  echo
+
+  exit
+else
+  echo "  OK"
+fi
+
+echo -n "Check if interface $interface exists..."
+ps -e -o comm | grep -q ^irq/.*${interface}\$
+if [ "$?" -ne "0" ] ; then
+    echo "  Failed"
+    echo "  Interrupt thread for interface $interface not found! Priority couldn't be set!"
+    echo
+
+    exit
+else
+    echo "  OK"
+fi
+
+echo "Setting thread priorities..."
+echo
+
+# Set real-time priority openPOWERLINK dependant threads
+if [ "$KERNEL_MAIN" = "2" ] ; then
+    chrt -f -p 80 `ps -C sirq-hrtimer/1 -o pid --no-headers`
+    chrt -f -p 70 `ps -C \`ps -e -o comm |grep ^irq/.*${interface}\$\` -o pid --no-headers`
+    chrt -f -p 60 `ps -C sirq-net-rx/1 -o pid --no-headers`
+else
+    chrt -f -p 96 `ps -C ksoftirqd/1 -o pid --no-headers`
+    chrt -f -p 97 `ps -C \`ps -e -o comm |grep ^irq/.*${interface}\$\` -o pid --no-headers`
+    taskset -p 2 `ps -C \`ps -e -o comm |grep ^irq/.*${interface}\$\` -o pid --no-headers`
+fi
+
+
+exit 0
+
+

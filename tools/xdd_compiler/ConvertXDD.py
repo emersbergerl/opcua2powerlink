@@ -709,7 +709,7 @@ class ConvertXDD:
 
         file_data.append("static char*            Status_l;\n")
         file_data.append("\n")
-        file_data.append("BOOLEAN status_init = 1;")
+        file_data.append("BOOL status_init = 1;")
         file_data.append("\n")
 
         # processSync function
@@ -900,7 +900,7 @@ class ConvertXDD:
         file_data.append("\n")
         file_data.append("/// \}\n")
 
-        with open(self.directory + "/src/app.c", 'w') as f:
+        with open(self.directory + "/src/opcua2powerlink/app.c", 'w') as f:
             for line in iter(file_data):
                 f.write(line)
 

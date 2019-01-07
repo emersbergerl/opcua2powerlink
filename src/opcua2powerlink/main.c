@@ -59,6 +59,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <WinSock2.h>
 #else
 #include <unistd.h>
+#include <pthread.h>
 #endif
 
 #include <console/console.h>
@@ -128,7 +129,11 @@ static tOplkError initPowerlink(UINT32 cycleLen_p,
                                 const char* devName_p,
                                 const UINT8* macAddr_p,
                                 UINT32 nodeId_p);
-DWORD WINAPI      OPCUA_thread(void);
+#if (TARGET_SYSTEM == _WIN32_)
+	DWORD WINAPI      OPCUA_thread(void);
+#else
+	void *OPCUA_thread(void);
+#endif
 static void       loopMain();
 static void       shutdownPowerlink(void);
 
@@ -172,7 +177,7 @@ int main(int argc, char* argv[])
     initEvents(&fGsOff_l);
 
     printf("----------------------------------------------------\n");
-    printf("OPCUA2OPLK Demo application \n");
+    printf("OPCUA2POWERLINK Demo application \n");
     printf("Using openPOWERLINK stack: %s\n", oplk_getVersionString());
     printf("----------------------------------------------------\n");
 
@@ -346,7 +351,20 @@ static tOplkError initPowerlink(UINT32 cycleLen_p,
     return kErrorOk;
 }
 
+//------------------------------------------------------------------------------
+/**
+\brief  Thread for OPC UA Server 
+
+This function implements the thread for the OPC UA Server.
+- It creates the OPC UA Server configuration
+- It creates a callback for updating the OPC UA Tags
+*/
+//------------------------------------------------------------------------------
+#if (TARGET_SYSTEM == _WIN32_)
 DWORD WINAPI OPCUA_thread(void)
+#else
+void *OPCUA_thread(void)
+#endif
 {
 	// Create a OPCUA Server with the defined port
 	UA_ServerConfig *config = UA_ServerConfig_new_minimal(OPCUA_PORT, NULL);
@@ -366,8 +384,8 @@ DWORD WINAPI OPCUA_thread(void)
 
 	UA_Server *server = UA_Server_new(config);
 
-	// Add a repeated callback to the server ( currently every 2 sec )
-	UA_Server_addRepeatedCallback(server, callbackOPCUA, NULL, 2000, NULL);
+	// Add a repeated callback to the server ( currently every 5 ms )
+	UA_Server_addRepeatedCallback(server, callbackOPCUA, NULL, 5, NULL);
 
 	UA_StatusCode retval;
 	// create nodes from nodeset
@@ -439,7 +457,15 @@ static void loopMain()
 		return;
 	}
 #else
-
+	pthread_t thread1;
+	// Create the thread
+	ret = pthread_create(&thread1, NULL, &OPCUA_thread, NULL);
+	// if there was some problem then close the thread
+	if (ret != 0)
+	{
+		printf("Error creating the OPCUA Server!\n");
+		return;
+	}
 #endif
 
 
@@ -501,14 +527,15 @@ static void loopMain()
 #endif
     }
 
-	// stop the OPCUA Server thread
-#if (TARGET_SYSTEM == _WIN32_)
 	running = false;
 	printf("Stopping OPCUA Server thread!\n");
+
+	// stop the OPCUA Server thread
+#if (TARGET_SYSTEM == _WIN32_)
 	WaitForSingleObject(OPCUA_HANDLE, INFINITE);
 	CloseHandle(OPCUA_HANDLE);
 #else
-
+	pthread_join(thread1, NULL);
 #endif
 
 #if (TARGET_SYSTEM == _WIN32_)

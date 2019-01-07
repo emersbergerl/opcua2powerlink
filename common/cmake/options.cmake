@@ -35,12 +35,12 @@ MESSAGE(STATUS "CMAKE_SYSTEM_PROCESSOR is ${CMAKE_SYSTEM_PROCESSOR}")
 ################################################################################
 # Set global directories
 ################################################################################
-SET(DEMO_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
+SET(DEMO_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/opcua2powerlink)
 SET(COMMON_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/common/src)
 SET(CONTRIB_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include/contrib)
-SET(OPLK_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include/)
+SET(OPLK_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 SET(OBJDICT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/common/objdicts)
-
+SET(TOOLS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tools)
 ################################################################################
 # Include CMake Modules
 ################################################################################
